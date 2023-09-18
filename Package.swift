@@ -3,11 +3,11 @@
 import PackageDescription
 
 func buildTargets() -> [Target] {
-    let baseURL = "https://github.com/realm/realm-swift/releases/download/v10.42.1"
+    let baseURL = "https://github.com/realm/realm-swift/releases/download/v10.42.2"
     let xcodeVersion = "15.0"
     
-    let realmChecksum = "5a166d03debda99f4378959a3cf39fc31c1e250a7aa7e9ec90b43450b99f5801"
-    let realmSwiftChecksum = "65edd34a49cc766a715c5244e80262e82c7e2a0660fd275a9df98def29c12343"
+    let realmChecksum = "b3eee3236de1991cfe6ab3072052c33e4030c01154216bfab94224b2ca92b848"
+    let realmSwiftChecksum = "228b7d129e946cb1a839bd31ac07d4b3713dd89bca01b92b6abccb4756b16a80"
     
     return [
         .binaryTarget(
