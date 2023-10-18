@@ -1,0 +1,7 @@
+--disable wrapMultilineStatementBraces,wrapSingleLineComments,enumNamespaces,conditionalAssignment
+--maxwidth 150
+--commas inline
+
+--exclude **/Generated,**/Generated Files, *.generated.swift
+--exclude **/LocalizableStringConstants.swift
+--exclude Sources/Tests/Screenshots/SnapshotHelper.swift
