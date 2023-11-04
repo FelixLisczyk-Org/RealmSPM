@@ -6,13 +6,13 @@ func buildTargets() -> [Target] {
     [
         .binaryTarget(
             name: "Realm",
-            url: "https://www.snipnotes.de/files/realm-swift/10.43.1/Realm.xcframework.zip",
-            checksum: "b74ad43bde341a3f56c214d701894ebfd95b82a8903750c1056714b2a6fd709d"
+            url: "https://www.snipnotes.de/files/realm-swift/10.44.0/Realm.xcframework.zip",
+            checksum: "e0aa253174bb6d5f61333b36256654eaac16a358738ced143681e5778a387317"
         ),
         .binaryTarget(
             name: "RealmSwift",
-            url: "https://www.snipnotes.de/files/realm-swift/10.43.1/RealmSwift.xcframework.zip",
-            checksum: "08f8fd17c4074b5e91247b0df894a4458c2937b272f11d49bfbdfeb5eb403399"
+            url: "https://www.snipnotes.de/files/realm-swift/10.44.0/RealmSwift.xcframework.zip",
+            checksum: "9728f22232398a18f33a6dd48ab99d1b02815ca55476fb9e34024e24fb017653"
         )
     ]
 }
