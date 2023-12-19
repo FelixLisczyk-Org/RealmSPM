@@ -3,31 +3,16 @@
 import PackageDescription
 
 func buildTargets() -> [Target] {
-    #if swift(>=5.9.1)
-        // Xcode 15.1
-        let realmTarget: Target = .binaryTarget(
-            name: "Realm",
-            url: "https://www.snipnotes.de/files/realm/10.44.0/15.1/Realm.xcframework.zip",
-            checksum: "050f338bf16637858d661900170a5e9de0d308885103d7cefeee902a9128fb08"
-        )
-        let realmSwiftTarget: Target = .binaryTarget(
-            name: "RealmSwift",
-            url: "https://www.snipnotes.de/files/realm/10.44.0/15.1/RealmSwift.xcframework.zip",
-            checksum: "940659d407d4933277c1efb8286710eceedf8f4de1e614223e6e1a3fdb6d0a40"
-        )
-    #else
-        // Xcode 15.0
-        let realmTarget: Target = .binaryTarget(
-            name: "Realm",
-            url: "https://www.snipnotes.de/files/realm/10.44.0/15.0/Realm.xcframework.zip",
-            checksum: "1e795e41a607de77f6032cc5dc93cf867ec43a1cc63b8458b2f4be8c9304fc4a"
-        )
-        let realmSwiftTarget: Target = .binaryTarget(
-            name: "RealmSwift",
-            url: "https://www.snipnotes.de/files/realm/10.44.0/15.0/RealmSwift.xcframework.zip",
-            checksum: "5a08edb76ac336d976ca8ac56e673d475a8db4e0bc9ca98ce252278b9db908e0"
-        )
-    #endif
+    let realmTarget: Target = .binaryTarget(
+        name: "Realm",
+        url: "https://github.com/realm/realm-swift/releases/download/v10.45.1/Realm.spm.zip",
+        checksum: "c0a40950494d4950f4489f6bffd624b037174626f138c0eda4a6746fbc6a27c7"
+    )
+    let realmSwiftTarget: Target = .binaryTarget(
+        name: "RealmSwift",
+        url: "https://github.com/realm/realm-swift/releases/download/v10.45.1/RealmSwift@15.1.spm.zip",
+        checksum: "6e037538044dda6950d779bd54051a9d9a62200a98b10434c6aca02bfb5784a2"
+    )
 
     return [realmTarget, realmSwiftTarget]
 }
