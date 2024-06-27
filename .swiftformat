@@ -2,6 +2,6 @@
 --maxwidth 150
 --commas inline
 
+--exclude DerivedData
 --exclude **/Generated,**/Generated Files, *.generated.swift
 --exclude **/LocalizableStringConstants.swift
---exclude Sources/Tests/Screenshots/SnapshotHelper.swift
