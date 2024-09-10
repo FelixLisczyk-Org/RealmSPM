@@ -5,13 +5,13 @@ import PackageDescription
 func buildTargets() -> [Target] {
     let realmTarget: Target = .binaryTarget(
         name: "Realm",
-        url: "https://github.com/realm/realm-swift/releases/download/v10.53.0/Realm.spm.zip",
-        checksum: "632a17f1ca302b777572a20c158f3c52ad76e343cd228887ec7a6a6fba18e9cc"
+        url: "https://github.com/realm/realm-swift/releases/download/v20.0.0/Realm.spm.zip",
+        checksum: "11428c01a60a81fb6a314d562de86cf724cd114330c36bcb4415ed276332f176"
     )
     let realmSwiftTarget: Target = .binaryTarget(
         name: "RealmSwift",
-        url: "https://github.com/realm/realm-swift/releases/download/v10.53.0/RealmSwift@15.4.spm.zip",
-        checksum: "0897ce8ceb4f983d6d07ab9b00eb59ab2bc855e2d54018c919d1e92db304f3f1"
+        url: "https://github.com/realm/realm-swift/releases/download/v20.0.0/RealmSwift@16_beta_6.spm.zip",
+        checksum: "a6e83219ddefd9731aaf39c6a59589cfa998665abdd241398c59c7ae83332253"
     )
 
     return [realmTarget, realmSwiftTarget]
@@ -20,10 +20,10 @@ func buildTargets() -> [Target] {
 let package = Package(
     name: "RealmSPM",
     platforms: [
-        .macOS(.v10_13),
-        .iOS(.v11),
-        .tvOS(.v11),
-        .watchOS(.v4)
+        .macOS(.v12),
+        .iOS(.v15),
+        .tvOS(.v15),
+        .watchOS(.v8)
     ],
     products: [
         .library(
