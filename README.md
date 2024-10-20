@@ -13,13 +13,12 @@ This repository is used to distribute Realm binary frameworks via Swift Package 
 > This apporach is required when using a beta release of Xcode. Swift module stability (`REALM_BUILD_LIBRARY_FOR_DISTRIBUTION`) is not enabled in the precompiled GitHub builds.
 
 1. Clone Git repository and check out the latest tag. (`git clone https://github.com/realm/realm-swift.git` and `git checkout <tag>`)
-2. Open `Configuration/RealmSwift/RealmSwift.xcconfig` and set `REALM_BUILD_LIBRARY_FOR_DISTRIBUTION` to `YES`. This ensures that the framework can be built with future versions of the Swift compiler. (The pre-built binaries don't have this flag enabled.)
-3. Open `build.sh` and remove unnecessary platforms. (`PLATFORMS="${*:-osx ios watchos}"`)
-4. Run `sh build.sh build` in the repository folder.
-5. Compress both `xcframework` files in `./build/Release/`
-6. Run `swift package compute-checksum` on both `zip` files
-7. Upload both `zip` files to webspace
-8. Update archive paths and checksums in `Package.swift`
+2. Open `build.sh` and remove unnecessary platforms. (`PLATFORMS="${*:-osx ios watchos}"`)
+3. Run `sh build.sh build` in the repository folder.
+4. Compress both `xcframework` files in `./build/Release/`
+5. Run `swift package compute-checksum` on both `zip` files
+6. Upload both `zip` files to webspace
+7. Update archive paths and checksums in `Package.swift`
 
 # Resources
 
