@@ -20,6 +20,8 @@ This repository is used to distribute Realm binary frameworks via Swift Package 
 6. Upload both `zip` files to webspace
 7. Update archive paths and checksums in `Package.swift`
 
+**Note:** Do not change the `REALM_BUILD_LIBRARY_FOR_DISTRIBUTION` build setting in the Realm repository. Changing this setting has previously caused problems when compiling apps with the `generic/platform=iOS Simulator` destination.
+
 # Resources
 
 - https://github.com/realm/realm-swift/issues/6898#issuecomment-1679997625
