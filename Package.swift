@@ -6,12 +6,12 @@ func buildTargets() -> [Target] {
     let realmTarget: Target = .binaryTarget(
         name: "Realm",
         url: "https://www.snipnotes.de/files/realm/v20.0.0/Realm.xcframework.zip",
-        checksum: "8b7ffc1f7d7be7d6ad3506de278b869bbf6b6752b7ff7f15fe0da437287765db"
+        checksum: "2c2bbd0d579175a5a5cf8dfbdde56ff46fcb9df1364d17d8e06ab51c83a74d0a"
     )
     let realmSwiftTarget: Target = .binaryTarget(
         name: "RealmSwift",
         url: "https://www.snipnotes.de/files/realm/v20.0.0/RealmSwift.xcframework.zip",
-        checksum: "3b1a25253d95102b619184b2d1302dfc514c883f98e94295e36d605c528fc299"
+        checksum: "02bc73e515b6e53c9b9015e7d05b4758a51c727cfd59e2fee8cf22855709f48f"
     )
 
     return [realmTarget, realmSwiftTarget]
