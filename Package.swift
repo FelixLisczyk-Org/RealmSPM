@@ -5,13 +5,13 @@ import PackageDescription
 func buildTargets() -> [Target] {
     let realmTarget: Target = .binaryTarget(
         name: "Realm",
-        url: "https://www.snipnotes.de/files/realm/v20.0.1/xcode16-3/Realm.xcframework.zip",
-        checksum: "f09bb81d031484dc976869e10bc08ffc080605b459299295e3a361f7ea327886"
+        url: "https://www.snipnotes.de/files/realm/v20.0.2/xcode16-4/Realm.xcframework.zip",
+        checksum: "2fd18fbdccc6a55541f8c2f973128acd30e386e423fa5f84241477c24b6bd489"
     )
     let realmSwiftTarget: Target = .binaryTarget(
         name: "RealmSwift",
-        url: "https://www.snipnotes.de/files/realm/v20.0.1/xcode16-3/RealmSwift.xcframework.zip",
-        checksum: "36d2b816f0c9e164f9471fc8a9aab16fa855c16284f15bb3ea77413fee57b413"
+        url: "https://www.snipnotes.de/files/realm/v20.0.2/xcode16-4/RealmSwift.xcframework.zip",
+        checksum: "aae85bf8ec6b68ae43516b53b6bb5877e459ac8cecb82cf77605b85d1e7a9eec"
     )
     return [realmTarget, realmSwiftTarget]
 }
