@@ -1,3 +1,42 @@
+# Generated files
+**/Generated/*.swift
+**/Generated Files/*.swift
+*.generated.swift
+**/ColorConstants.swift
+**/LocalizableStringConstants.swift
+**/LocalizationConstants.swift
+**/StoryboardSceneConstants.swift
+**/StoryboardSegueConstants.swift
+Pods
 .DS_Store
-/.build
-/.swiftpm
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Tuist
+*.xcodeproj
+*.xcworkspace
+Derived/
+Tuist/.build
+
+# Aider
+.aider*
+
+# Claude Code
+.claude*
+
+# Neovim
+.nvim/*
+!.nvim/xcodebuild
+.nvim/xcodebuild/*
+!.nvim/xcodebuild/run_args.txt
+!.nvim/xcodebuild/env.txt
+buildServer.json
+
+# Obsidian
+docs/.obsidian
+
+
+# SwiftLint Remote Config Cache
+.swiftlint/RemoteConfigCache
