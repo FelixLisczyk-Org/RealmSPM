@@ -6,13 +6,13 @@ func buildTargets() -> [Target] {
     #if swift(>=6.2)
         let realmTarget: Target = .binaryTarget(
             name: "Realm",
-            url: "https://www.snipnotes.de/files/realm/v20.0.3/xcode26-0/Realm.xcframework.zip",
-            checksum: "80bcdd7ba1b6c6c356962cdaf68a0f397880146014f760c1ff7f05862e90b7ec"
+            url: "https://www.snipnotes.de/files/realm/v20.0.3/xcode26-0-b4/Realm.xcframework.zip",
+            checksum: "c823de820929332a85f5f6f9ef3c5a63c7f837181e524fa7dcc5ea605706d093"
         )
         let realmSwiftTarget: Target = .binaryTarget(
             name: "RealmSwift",
-            url: "https://www.snipnotes.de/files/realm/v20.0.3/xcode26-0/RealmSwift.xcframework.zip",
-            checksum: "5f3a5aa8c2546e2b1774c2a615d03fb608a76800cffde6432d9c1cd7d5620f84"
+            url: "https://www.snipnotes.de/files/realm/v20.0.3/xcode26-0-b4/RealmSwift.xcframework.zip",
+            checksum: "77d0a0a9832a9049c027c9133a416091251a7779cea096d8fca0e428f361410b"
         )
     #else
         let realmTarget: Target = .binaryTarget(
