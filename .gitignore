@@ -25,6 +25,8 @@ Tuist/.build
 
 # Claude Code
 .claude*
+usage_tracking2.json
+uploads/
 
 # Neovim
 .nvim/*
