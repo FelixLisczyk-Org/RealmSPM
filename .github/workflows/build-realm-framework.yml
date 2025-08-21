@@ -45,10 +45,14 @@ jobs:
         echo "✅ Version format is valid: ${{ inputs.realm_version }}"
     
     - name: Select Xcode Version
+      id: select-xcode
       uses: FelixLisczyk-Org/GitHub-Workflows/xcode-select-version@main
       with:
         use_beta_xcode: ${{ inputs.use_beta_xcode }}
         runner_root_password: ${{ secrets.RUNNER_ROOT_PWD }}
+    
+    - name: Store Original Xcode Path
+      run: echo "ORIGINAL_XCODE_PATH=${{ steps.select-xcode.outputs.original_xcode_path }}" >> $GITHUB_ENV
     
     - name: Detect Swift Version
       id: swift-version
@@ -96,7 +100,7 @@ jobs:
         cp build.sh build.sh.backup
         
         # Update build.sh to only include supported platforms
-        sed -i '' 's/PLATFORMS="${\*:-osx ios watchos tvos}"/PLATFORMS="${*:-osx ios watchos}"/' build.sh
+        sed -i '' 's/PLATFORMS="${\*:-osx ios watchos tvos catalyst visionos}"/PLATFORMS="${*:-osx ios watchos}"/' build.sh
         
         echo "✅ Updated build.sh platforms configuration"
         echo "Platforms to build:"
@@ -335,3 +339,10 @@ jobs:
         echo "3. Verify framework compatibility across target platforms" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "✅ **Process completed successfully!** Manual work reduced from ~30 minutes to ~5 minutes." >> $GITHUB_STEP_SUMMARY
+    
+    - name: Restore Original Xcode Version
+      uses: FelixLisczyk-Org/GitHub-Workflows/xcode-restore-version@main
+      with:
+        original_xcode_path: ${{ env.ORIGINAL_XCODE_PATH }}
+        runner_root_password: ${{ secrets.RUNNER_ROOT_PWD }}
+      if: always()
