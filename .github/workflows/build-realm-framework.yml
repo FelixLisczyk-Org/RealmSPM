@@ -25,7 +25,7 @@ defaults:
 
 jobs:
   build-and-release:
-    name: Build and Release Realm Framework
+    name: Build Realm Framework
     runs-on: ${{ fromJSON('["self-hosted", "macOS", "ARM64"]') }}
     timeout-minutes: 180
     
@@ -177,9 +177,10 @@ jobs:
       run: |
         SWIFT_VERSION="${{ steps.swift-version.outputs.swift_version }}"
         REALM_VERSION="${{ inputs.realm_version }}"
+        XCODE_TYPE="${{ inputs.use_beta_xcode && 'Beta' || 'Stable' }}"
         
-        # Create release name and tag
-        RELEASE_NAME="Realm-${REALM_VERSION#v}-Swift-${SWIFT_VERSION}"
+        # Create release name and tag (include Xcode type for uniqueness)
+        RELEASE_NAME="Realm-${REALM_VERSION#v}-Swift-${SWIFT_VERSION}-${XCODE_TYPE}"
         RELEASE_TAG="${RELEASE_NAME}"
         
         echo "📋 Release naming:"
@@ -197,7 +198,7 @@ jobs:
         RELEASE_TAG="${{ steps.release-naming.outputs.release_tag }}"
         REALM_VERSION="${{ inputs.realm_version }}"
         SWIFT_VERSION="${{ steps.swift-version.outputs.swift_version }}"
-        XCODE_TYPE="${{ inputs.use_beta_xcode == 'true' && 'Beta' || 'Stable' }}"
+        XCODE_TYPE="${{ inputs.use_beta_xcode && 'Beta' || 'Stable' }}"
         
         echo "🚀 Creating GitHub release..."
         
@@ -282,14 +283,15 @@ jobs:
         SWIFT_VERSION="${{ steps.swift-version.outputs.swift_version }}"
         MANIFEST_FILE="${{ steps.swift-version.outputs.manifest_file }}"
         RELEASE_URL="${{ steps.create-release.outputs.release_url }}"
-        XCODE_TYPE="${{ inputs.use_beta_xcode == 'true' && 'Beta' || 'Stable' }}"
+        XCODE_TYPE="${{ inputs.use_beta_xcode && 'Beta' || 'Stable' }}"
         
         # Configure git for commits
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
         
-        # Create branch for the changes
-        BRANCH_NAME="update-realm-${REALM_VERSION#v}-swift-${SWIFT_VERSION}"
+        # Create branch for the changes with timestamp to ensure uniqueness
+        TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+        BRANCH_NAME="update-realm-${REALM_VERSION#v}-swift-${SWIFT_VERSION}-${TIMESTAMP}"
         git checkout -b "$BRANCH_NAME"
         
         # Stage and commit changes
