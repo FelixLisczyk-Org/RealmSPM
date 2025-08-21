@@ -18,12 +18,16 @@ permissions:
   pull-requests: write
   packages: write
 
-env:
-  DEVELOPER_DIR: ''
+defaults:
+  run:
+    # Run bash scripts with a login shell to load `.bash_profile`
+    shell: bash -leo pipefail {0}
 
 jobs:
   build-and-release:
-    runs-on: macos-latest
+    name: Build and Release Realm Framework
+    runs-on: ${{ fromJSON('["self-hosted", "macOS", "ARM64"]') }}
+    timeout-minutes: 180
     
     steps:
     - name: Checkout repository
