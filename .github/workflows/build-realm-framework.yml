@@ -1,0 +1,398 @@
+name: Build Realm Framework
+
+on:
+  workflow_dispatch:
+    inputs:
+      realm_version:
+        description: 'Realm version tag to build'
+        required: true
+        type: string
+      use_beta_xcode:
+        description: 'Use Beta Xcode?'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  packages: write
+
+defaults:
+  run:
+    # Run bash scripts with a login shell to load `.bash_profile`
+    shell: bash -leo pipefail {0}
+
+jobs:
+  build-and-release:
+    name: Build Realm Framework
+    runs-on: ${{ fromJSON('["self-hosted", "macOS", "ARM64"]') }}
+    timeout-minutes: 180
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Validate Realm version format
+      run: |
+        if [[ ! "${{ inputs.realm_version }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "::error title=Invalid Version Format::Realm version must be in format vX.Y.Z (e.g., v20.0.4)"
+          exit 1
+        fi
+        echo "✅ Version format is valid: ${{ inputs.realm_version }}"
+    
+    - name: Select Xcode Version
+      id: select-xcode
+      uses: FelixLisczyk-Org/GitHub-Workflows/xcode-select-version@main
+      with:
+        use_beta_xcode: ${{ inputs.use_beta_xcode }}
+        runner_root_password: ${{ secrets.RUNNER_ROOT_PWD }}
+    
+    - name: Store Original Xcode Path
+      run: echo "ORIGINAL_XCODE_PATH=${{ steps.select-xcode.outputs.original_xcode_path }}" >> $GITHUB_ENV
+    
+    - name: Detect Swift Version
+      id: swift-version
+      run: |
+        SWIFT_VERSION=$(swift --version | grep "Apple Swift version" | head -1 | cut -d' ' -f4)
+        if [[ -z "$SWIFT_VERSION" ]]; then
+          echo "::error title=Swift Version Detection Failed::Could not detect Swift version from Xcode"
+          echo "Swift version output:"
+          swift --version
+          exit 1
+        fi
+        
+        echo "Detected Swift version: $SWIFT_VERSION"
+        echo "swift_version=$SWIFT_VERSION" >> $GITHUB_OUTPUT
+        
+        # Determine target manifest file for this Swift version
+        MANIFEST_FILE="Package@swift-${SWIFT_VERSION}.swift"
+        
+        # Check if manifest exists, if not create it from template
+        if [[ ! -f "$MANIFEST_FILE" ]]; then
+          echo "📝 Creating new manifest file: $MANIFEST_FILE"
+          
+          # Check if template exists
+          if [[ ! -f "templates/Package.swift.template" ]]; then
+            echo "::error title=Missing Template::Package.swift.template not found in templates/ directory"
+            exit 1
+          fi
+          
+          # Create new manifest from template with Swift version
+          cp "templates/Package.swift.template" "$MANIFEST_FILE"
+          sed -i '' "s/SWIFT_VERSION_PLACEHOLDER/$SWIFT_VERSION/g" "$MANIFEST_FILE"
+          
+          # Use placeholder values that will be updated later in the workflow
+          sed -i '' "s|REALM_URL_PLACEHOLDER|https://example.com/placeholder/Realm.xcframework.zip|g" "$MANIFEST_FILE"
+          sed -i '' "s|REALMSWIFT_URL_PLACEHOLDER|https://example.com/placeholder/RealmSwift.xcframework.zip|g" "$MANIFEST_FILE"
+          sed -i '' "s|REALM_CHECKSUM_PLACEHOLDER|placeholder-realm-checksum|g" "$MANIFEST_FILE"
+          sed -i '' "s|REALMSWIFT_CHECKSUM_PLACEHOLDER|placeholder-realmswift-checksum|g" "$MANIFEST_FILE"
+          
+          echo "✅ Created new manifest file: $MANIFEST_FILE"
+          echo "new_manifest_created=true" >> $GITHUB_OUTPUT
+        else
+          echo "✅ Found existing manifest file: $MANIFEST_FILE"
+          echo "new_manifest_created=false" >> $GITHUB_OUTPUT
+        fi
+        
+        echo "manifest_file=$MANIFEST_FILE" >> $GITHUB_OUTPUT
+    
+    - name: Clone Realm Swift repository
+      run: |
+        echo "📥 Cloning realm-swift repository..."
+        # Stash our RealmSPM files temporarily
+        mkdir -p /tmp/realmspm-backup
+        cp -r .github Package@swift-*.swift README.md plan.md templates /tmp/realmspm-backup/ 2>/dev/null || true
+        
+        # Remove everything except .git to make room for realm-swift
+        find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} \;
+        
+        # Clone realm-swift repository and switch to correct version
+        git clone https://github.com/realm/realm-swift.git temp-realm
+        cd temp-realm
+        echo "🔄 Checking out ${{ inputs.realm_version }}..."
+        git checkout ${{ inputs.realm_version }}
+        cd ..
+        
+        # Copy all realm-swift files to current directory
+        cp -r temp-realm/* . 2>/dev/null || true
+        # Copy hidden files but skip .git to avoid conflicts
+        (cd temp-realm && find . -name '.*' -not -name '.git' -not -name '.' -not -name '..' -exec cp -r {} .. \;) 2>/dev/null || true
+        rm -rf temp-realm
+        
+        echo "✅ Successfully set up Realm ${{ inputs.realm_version }} source"
+        
+        # Restore our RealmSPM files (this will overwrite any conflicts)
+        cp -r /tmp/realmspm-backup/* . 2>/dev/null || true
+        rm -rf /tmp/realmspm-backup
+    
+    - name: Configure build script for supported platforms
+      run: |
+        echo "📝 Configuring build.sh for supported platforms (macOS, iOS, watchOS only)..."
+        
+        # Backup original build.sh
+        cp build.sh build.sh.backup
+        
+        # Update build.sh to only include supported platforms
+        sed -i '' 's/PLATFORMS="${\*:-osx ios watchos tvos catalyst visionos}"/PLATFORMS="${*:-osx ios watchos}"/' build.sh
+        
+        echo "✅ Updated build.sh platforms configuration"
+        echo "Platforms to build:"
+        grep "PLATFORMS=" build.sh
+    
+    - name: Clean build artifacts
+      run: |
+        echo "🧹 Cleaning previous build artifacts..."
+        rm -rf build
+        echo "✅ Build directory cleaned"
+    
+    - name: Build Realm frameworks
+      run: |
+        echo "🔨 Building Realm frameworks..."
+        echo "Using Xcode: $(xcode-select -p)"
+        echo "Swift version: $(swift --version | head -n1)"
+        echo "Working directory: $(pwd)"
+        
+        # Build with verbose output for debugging
+        sh build.sh build
+        
+        echo "✅ Build completed successfully"
+        echo "Built frameworks:"
+        ls -la build/Release/
+    
+    - name: Create framework archives
+      id: create-archives
+      run: |
+        cd build/Release
+        
+        echo "📦 Creating framework archives (preserving symlinks)..."
+        
+        # Create archives using ditto to preserve symlinks
+        ditto -c -k --sequesterRsrc Realm.xcframework Realm.xcframework.zip
+        ditto -c -k --sequesterRsrc RealmSwift.xcframework RealmSwift.xcframework.zip
+        
+        echo "✅ Archives created successfully"
+        ls -la *.zip
+        
+        # Compute checksums
+        REALM_CHECKSUM=$(swift package compute-checksum Realm.xcframework.zip)
+        REALMSWIFT_CHECKSUM=$(swift package compute-checksum RealmSwift.xcframework.zip)
+        
+        echo "📊 Computed checksums:"
+        echo "Realm.xcframework.zip: $REALM_CHECKSUM"
+        echo "RealmSwift.xcframework.zip: $REALMSWIFT_CHECKSUM"
+        
+        # Set outputs for next steps
+        echo "realm_checksum=$REALM_CHECKSUM" >> $GITHUB_OUTPUT
+        echo "realmswift_checksum=$REALMSWIFT_CHECKSUM" >> $GITHUB_OUTPUT
+        
+        # Move archives to workspace root for release
+        mv Realm.xcframework.zip ../../
+        mv RealmSwift.xcframework.zip ../../
+    
+    - name: Determine release naming
+      id: release-naming
+      run: |
+        SWIFT_VERSION="${{ steps.swift-version.outputs.swift_version }}"
+        REALM_VERSION="${{ inputs.realm_version }}"
+        XCODE_TYPE="${{ inputs.use_beta_xcode && 'Beta' || 'Stable' }}"
+        
+        # Create release name and tag (include Xcode type for uniqueness)
+        RELEASE_NAME="Realm-${REALM_VERSION#v}-Swift-${SWIFT_VERSION}-${XCODE_TYPE}"
+        RELEASE_TAG="${RELEASE_NAME}"
+        
+        echo "📋 Release naming:"
+        echo "Release name: $RELEASE_NAME"
+        echo "Release tag: $RELEASE_TAG"
+        
+        echo "release_name=$RELEASE_NAME" >> $GITHUB_OUTPUT
+        echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
+    
+    - name: Delete Existing Release and Tag
+      id: delete-existing
+      run: |
+        set -euo pipefail
+        RELEASE_TAG="${{ steps.release-naming.outputs.release_tag }}"
+        
+        echo "🗑️ Checking for existing release and tag: $RELEASE_TAG"
+        
+        # Delete existing release if it exists
+        if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+          echo "ℹ️ Deleting existing release: $RELEASE_TAG"
+          gh release delete "$RELEASE_TAG" --yes
+          echo "✅ Existing release deleted"
+        else
+          echo "ℹ️ No existing release found"
+        fi
+        
+        # Delete existing tag if it exists
+        if git tag -l | grep -q "^$RELEASE_TAG$"; then
+          echo "ℹ️ Deleting existing tag: $RELEASE_TAG"
+          git tag -d "$RELEASE_TAG" 2>/dev/null || true
+          git push origin --delete "$RELEASE_TAG" 2>/dev/null || true
+          echo "✅ Existing tag deleted"
+        else
+          echo "ℹ️ No existing tag found"
+        fi
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Update Package manifest
+      id: update-manifest
+      run: |
+        MANIFEST_FILE="${{ steps.swift-version.outputs.manifest_file }}"
+        RELEASE_TAG="${{ steps.release-naming.outputs.release_tag }}"
+        REALM_CHECKSUM="${{ steps.create-archives.outputs.realm_checksum }}"
+        REALMSWIFT_CHECKSUM="${{ steps.create-archives.outputs.realmswift_checksum }}"
+        REPO_URL="https://github.com/${{ github.repository }}"
+        NEW_MANIFEST_CREATED="${{ steps.swift-version.outputs.new_manifest_created }}"
+        
+        echo "📝 Updating $MANIFEST_FILE with new release URLs and checksums..."
+        
+        # Create updated manifest content
+        REALM_URL="${REPO_URL}/releases/download/${RELEASE_TAG}/Realm.xcframework.zip"
+        REALMSWIFT_URL="${REPO_URL}/releases/download/${RELEASE_TAG}/RealmSwift.xcframework.zip"
+        
+        # Update the manifest file URLs and checksums using sed for reliable replacement
+        sed -i '' "s|url: \"[^\"]*Realm\.xcframework\.zip\"|url: \"$REALM_URL\"|g" "$MANIFEST_FILE"
+        sed -i '' "s|url: \"[^\"]*RealmSwift\.xcframework\.zip\"|url: \"$REALMSWIFT_URL\"|g" "$MANIFEST_FILE"
+        
+        # Update checksums - handle both new manifests (with placeholders) and existing manifests
+        # Try placeholder replacement first (for new manifests)
+        sed -i '' "s|checksum: \"placeholder-realm-checksum\"|checksum: \"$REALM_CHECKSUM\"|g" "$MANIFEST_FILE"
+        sed -i '' "s|checksum: \"placeholder-realmswift-checksum\"|checksum: \"$REALMSWIFT_CHECKSUM\"|g" "$MANIFEST_FILE"
+        
+        # For existing manifests, replace any checksum that follows a Realm URL (range-based replacement)
+        sed -i '' "/url:.*Realm\.xcframework\.zip/,/checksum:/ s|checksum: \"[^\"]*\"|checksum: \"$REALM_CHECKSUM\"|" "$MANIFEST_FILE"
+        sed -i '' "/url:.*RealmSwift\.xcframework\.zip/,/checksum:/ s|checksum: \"[^\"]*\"|checksum: \"$REALMSWIFT_CHECKSUM\"|" "$MANIFEST_FILE"
+        
+        # Check if we need to create a PR
+        if [[ "$NEW_MANIFEST_CREATED" == "true" ]]; then
+          echo "✅ New manifest file $MANIFEST_FILE was created and updated - PR needed"
+          echo "Updated content:"
+          cat "$MANIFEST_FILE"
+          echo "manifest_updated=true" >> $GITHUB_OUTPUT
+        elif git diff --quiet "$MANIFEST_FILE"; then
+          echo "ℹ️ No changes detected in $MANIFEST_FILE - URLs and checksums are already up to date"
+          echo "manifest_updated=false" >> $GITHUB_OUTPUT
+        else
+          echo "✅ Updated existing $MANIFEST_FILE with new URLs and checksums"
+          echo "Changes made:"
+          git diff "$MANIFEST_FILE"
+          echo "manifest_updated=true" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Commit to Main Branch
+      if: steps.update-manifest.outputs.manifest_updated == 'true'
+      run: |
+        REALM_VERSION="${{ inputs.realm_version }}"
+        SWIFT_VERSION="${{ steps.swift-version.outputs.swift_version }}"
+        MANIFEST_FILE="${{ steps.swift-version.outputs.manifest_file }}"
+        RELEASE_URL="TBD"  # Release will be created after commit
+        XCODE_TYPE="${{ inputs.use_beta_xcode && 'Beta' || 'Stable' }}"
+        
+        # Configure git for commits
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        
+        # Stage and commit changes directly to main
+        git add "$MANIFEST_FILE"
+        git commit -m "Update Realm to $REALM_VERSION for Swift $SWIFT_VERSION" \
+          -m "- Updated $MANIFEST_FILE with new framework URLs and checksums" \
+          -m "- Built with $XCODE_TYPE Xcode" \
+          -m "- Platforms: macOS, iOS, watchOS" \
+          -m "- Release: Will be created after commit" \
+          -m "" \
+          -m "🤖 Generated with automated workflow"
+        
+        # Push directly to main
+        git push origin main
+        
+        echo "✅ Changes committed and pushed to main branch"
+        echo "📋 Commit: $(git rev-parse --short HEAD)"
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Create GitHub Release
+      id: create-release
+      run: |
+        set -euo pipefail
+        RELEASE_NAME="${{ steps.release-naming.outputs.release_name }}"
+        RELEASE_TAG="${{ steps.release-naming.outputs.release_tag }}"
+        REALM_VERSION="${{ inputs.realm_version }}"
+        SWIFT_VERSION="${{ steps.swift-version.outputs.swift_version }}"
+        XCODE_TYPE="${{ inputs.use_beta_xcode && 'Beta' || 'Stable' }}"
+        
+        echo "🚀 Creating GitHub release with updated commit..."
+        
+        # Create release notes using echo to avoid YAML parsing issues
+        echo "## Realm $REALM_VERSION for Swift $SWIFT_VERSION" > release_notes.md
+        echo "" >> release_notes.md
+        echo "**Build Details:**" >> release_notes.md
+        echo "- Realm Version: $REALM_VERSION" >> release_notes.md  
+        echo "- Swift Version: $SWIFT_VERSION" >> release_notes.md
+        echo "- Xcode Type: $XCODE_TYPE Xcode" >> release_notes.md
+        echo "- Platforms: macOS, iOS, watchOS" >> release_notes.md
+        echo "- Build Date: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> release_notes.md
+        echo "" >> release_notes.md
+        echo "**Framework Files:**" >> release_notes.md
+        echo "- \`Realm.xcframework.zip\` (checksum: ${{ steps.create-archives.outputs.realm_checksum }})" >> release_notes.md
+        echo "- \`RealmSwift.xcframework.zip\` (checksum: ${{ steps.create-archives.outputs.realmswift_checksum }})" >> release_notes.md
+        echo "" >> release_notes.md
+        echo "**Usage:**" >> release_notes.md
+        echo "These frameworks are automatically integrated via the Swift Package Manager manifest for Swift $SWIFT_VERSION." >> release_notes.md
+        echo "" >> release_notes.md
+        echo "Built with automated workflow from commit $(git rev-parse --short HEAD)." >> release_notes.md
+        
+        # Create new release (we already deleted any existing one)
+        gh release create "$RELEASE_TAG" \
+          Realm.xcframework.zip \
+          RealmSwift.xcframework.zip \
+          --title "$RELEASE_NAME" \
+          --notes-file release_notes.md \
+          --draft=false \
+          --prerelease=false
+        
+        echo "✅ Release created successfully: $RELEASE_TAG"
+        
+        # Get release URL for output
+        RELEASE_URL=$(gh release view "$RELEASE_TAG" --json url --jq .url)
+        echo "release_url=$RELEASE_URL" >> $GITHUB_OUTPUT
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Workflow Summary
+      run: |
+        echo "## 🎉 Realm Framework Build Complete!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Build Details" >> $GITHUB_STEP_SUMMARY
+        echo "- **Realm Version:** ${{ inputs.realm_version }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Swift Version:** ${{ steps.swift-version.outputs.swift_version }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Xcode Type:** ${{ inputs.use_beta_xcode && 'Beta' || 'Stable' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Platforms:** macOS, iOS, watchOS" >> $GITHUB_STEP_SUMMARY
+        echo "- **Build Date:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Artifacts Created" >> $GITHUB_STEP_SUMMARY
+        echo "- **GitHub Release:** ${{ steps.create-release.outputs.release_url }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Package Manifest Updated:** ${{ steps.swift-version.outputs.manifest_file }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Framework Checksums" >> $GITHUB_STEP_SUMMARY
+        echo "- **Realm.xcframework.zip:** \`${{ steps.create-archives.outputs.realm_checksum }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **RealmSwift.xcframework.zip:** \`${{ steps.create-archives.outputs.realmswift_checksum }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+        echo "1. Test the updated package manifest in your projects" >> $GITHUB_STEP_SUMMARY
+        echo "2. Verify framework compatibility across target platforms" >> $GITHUB_STEP_SUMMARY
+        echo "3. Changes are already live on main branch - no manual merge required" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "✅ **Process completed successfully!**" >> $GITHUB_STEP_SUMMARY
+    
+    - name: Restore Original Xcode Version
+      uses: FelixLisczyk-Org/GitHub-Workflows/xcode-restore-version@main
+      with:
+        original_xcode_path: ${{ env.ORIGINAL_XCODE_PATH }}
+        runner_root_password: ${{ secrets.RUNNER_ROOT_PWD }}
+      if: always()
