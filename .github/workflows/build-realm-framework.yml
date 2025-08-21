@@ -36,7 +36,7 @@ jobs:
         echo "✅ Version format is valid: ${{ inputs.realm_version }}"
     
     - name: Select Xcode Version
-      uses: /Users/felix/Developer/Misc/GitHub-Workflows/xcode-select-version
+      uses: FelixLisczyk-Org/GitHub-Workflows/xcode-select-version@main
       with:
         use_beta_xcode: ${{ inputs.use_beta_xcode }}
         runner_root_password: ${{ secrets.RUNNER_ROOT_PASSWORD }}
