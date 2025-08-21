@@ -262,8 +262,12 @@ jobs:
         # Update the manifest file URLs and checksums using perl for robust replacement
         perl -i -pe "s|url: \"[^\"]*Realm\.xcframework\.zip\"|url: \"$REALM_URL\"|g" "$MANIFEST_FILE"
         perl -i -pe "s|url: \"[^\"]*RealmSwift\.xcframework\.zip\"|url: \"$REALMSWIFT_URL\"|g" "$MANIFEST_FILE"
-        perl -i -pe "s|(name: \"Realm\",.*?checksum: \")[^\"]*(\")|\$1$REALM_CHECKSUM\$2|gs" "$MANIFEST_FILE"
-        perl -i -pe "s|(name: \"RealmSwift\",.*?checksum: \")[^\"]*(\")|\$1$REALMSWIFT_CHECKSUM\$2|gs" "$MANIFEST_FILE"
+        
+        # Update checksums - target specific frameworks by URL context
+        # Update Realm checksum (find checksum line that follows Realm URL)
+        perl -i -pe "BEGIN{undef $/;} s|(url: \"[^\"]*Realm\.xcframework\.zip\",\s*checksum: \")[^\"]*(\")|\$1$REALM_CHECKSUM\$2|gs" "$MANIFEST_FILE"
+        # Update RealmSwift checksum (find checksum line that follows RealmSwift URL)  
+        perl -i -pe "BEGIN{undef $/;} s|(url: \"[^\"]*RealmSwift\.xcframework\.zip\",\s*checksum: \")[^\"]*(\")|\$1$REALMSWIFT_CHECKSUM\$2|gs" "$MANIFEST_FILE"
         
         # Check if the manifest file actually changed
         if git diff --quiet "$MANIFEST_FILE"; then
@@ -338,7 +342,7 @@ jobs:
         echo "### Build Details" >> $GITHUB_STEP_SUMMARY
         echo "- **Realm Version:** ${{ inputs.realm_version }}" >> $GITHUB_STEP_SUMMARY
         echo "- **Swift Version:** ${{ steps.swift-version.outputs.swift_version }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **Xcode Type:** ${{ inputs.use_beta_xcode == 'true' && 'Beta' || 'Stable' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Xcode Type:** ${{ inputs.use_beta_xcode && 'Beta' || 'Stable' }}" >> $GITHUB_STEP_SUMMARY
         echo "- **Platforms:** macOS, iOS, watchOS" >> $GITHUB_STEP_SUMMARY
         echo "- **Build Date:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
