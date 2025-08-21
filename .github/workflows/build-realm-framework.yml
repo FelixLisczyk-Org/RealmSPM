@@ -13,6 +13,11 @@ on:
         type: boolean
         default: false
 
+permissions:
+  contents: write
+  pull-requests: write
+  packages: write
+
 env:
   DEVELOPER_DIR: ''
 
@@ -227,11 +232,16 @@ jobs:
         perl -i -pe "s|(name: \"Realm\",.*?checksum: \")[^\"]*(\")|\$1$REALM_CHECKSUM\$2|gs" "$MANIFEST_FILE"
         perl -i -pe "s|(name: \"RealmSwift\",.*?checksum: \")[^\"]*(\")|\$1$REALMSWIFT_CHECKSUM\$2|gs" "$MANIFEST_FILE"
         
-        echo "✅ Updated $MANIFEST_FILE"
-        echo "Changes made:"
-        git diff "$MANIFEST_FILE" || echo "No git diff available"
-        
-        echo "manifest_updated=true" >> $GITHUB_OUTPUT
+        # Check if the manifest file actually changed
+        if git diff --quiet "$MANIFEST_FILE"; then
+          echo "ℹ️ No changes detected in $MANIFEST_FILE - URLs and checksums are already up to date"
+          echo "manifest_updated=false" >> $GITHUB_OUTPUT
+        else
+          echo "✅ Updated $MANIFEST_FILE with new URLs and checksums"
+          echo "Changes made:"
+          git diff "$MANIFEST_FILE"
+          echo "manifest_updated=true" >> $GITHUB_OUTPUT
+        fi
     
     - name: Create Pull Request
       if: steps.update-manifest.outputs.manifest_updated == 'true'
