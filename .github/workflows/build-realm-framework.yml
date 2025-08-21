@@ -171,6 +171,7 @@ jobs:
     - name: Create GitHub Release
       id: create-release
       run: |
+        set -euo pipefail
         RELEASE_NAME="${{ steps.release-naming.outputs.release_name }}"
         RELEASE_TAG="${{ steps.release-naming.outputs.release_tag }}"
         REALM_VERSION="${{ inputs.realm_version }}"
@@ -198,14 +199,20 @@ jobs:
         echo "" >> release_notes.md
         echo "Built with automated workflow from commit $(git rev-parse --short HEAD)." >> release_notes.md
         
-        # Create release with framework archives
-        gh release create "$RELEASE_TAG" \
-          Realm.xcframework.zip \
-          RealmSwift.xcframework.zip \
-          --title "$RELEASE_NAME" \
-          --notes-file release_notes.md \
-          --draft=false \
-          --prerelease=false
+        # Create or update release with framework archives
+        if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+          echo "ℹ️ Release exists; uploading assets with --clobber"
+          gh release upload "$RELEASE_TAG" Realm.xcframework.zip RealmSwift.xcframework.zip --clobber
+          gh release edit   "$RELEASE_TAG" --title "$RELEASE_NAME" --notes-file release_notes.md
+        else
+          gh release create "$RELEASE_TAG" \
+            Realm.xcframework.zip \
+            RealmSwift.xcframework.zip \
+            --title "$RELEASE_NAME" \
+            --notes-file release_notes.md \
+            --draft=false \
+            --prerelease=false
+        fi
         
         echo "✅ Release created successfully: $RELEASE_TAG"
         
