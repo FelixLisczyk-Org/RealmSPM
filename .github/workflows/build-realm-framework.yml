@@ -169,8 +169,8 @@ jobs:
         echo "realmswift_checksum=$REALMSWIFT_CHECKSUM" >> $GITHUB_OUTPUT
         
         # Move archives to workspace root for release
-        mv Realm.xcframework.zip ../../../
-        mv RealmSwift.xcframework.zip ../../../
+        mv Realm.xcframework.zip ../../
+        mv RealmSwift.xcframework.zip ../../
     
     - name: Determine release naming
       id: release-naming
