@@ -84,7 +84,7 @@ jobs:
         echo "📥 Cloning realm-swift repository..."
         # Stash our RealmSPM files temporarily
         mkdir -p /tmp/realmspm-backup
-        cp -r .github Package@swift-*.swift README.md plan.md /tmp/realmspm-backup/ 2>/dev/null || true
+        cp -r .github Package@swift-*.swift README.md plan.md templates /tmp/realmspm-backup/ 2>/dev/null || true
         
         # Remove everything except .git to make room for realm-swift
         find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} \;
@@ -306,7 +306,7 @@ jobs:
         git push origin "$BRANCH_NAME"
         
         # Create PR body from template
-        cp .github/pr-template.md pr-body.md
+        cp templates/pr-template.md pr-body.md
         sed -i '' "s/REALM_VERSION_PLACEHOLDER/$REALM_VERSION/g" pr-body.md
         sed -i '' "s/SWIFT_VERSION_PLACEHOLDER/$SWIFT_VERSION/g" pr-body.md
         sed -i '' "s/XCODE_TYPE_PLACEHOLDER/$XCODE_TYPE/g" pr-body.md
