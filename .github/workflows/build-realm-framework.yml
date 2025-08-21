@@ -263,30 +263,20 @@ jobs:
         # Push branch
         git push origin "$BRANCH_NAME"
         
+        # Create PR body from template
+        cp .github/pr-template.md pr-body.md
+        sed -i '' "s/REALM_VERSION_PLACEHOLDER/$REALM_VERSION/g" pr-body.md
+        sed -i '' "s/SWIFT_VERSION_PLACEHOLDER/$SWIFT_VERSION/g" pr-body.md
+        sed -i '' "s/XCODE_TYPE_PLACEHOLDER/$XCODE_TYPE/g" pr-body.md
+        sed -i '' "s|MANIFEST_FILE_PLACEHOLDER|$MANIFEST_FILE|g" pr-body.md
+        sed -i '' "s|RELEASE_URL_PLACEHOLDER|$RELEASE_URL|g" pr-body.md
+        sed -i '' "s/BUILD_DATE_PLACEHOLDER/$(date -u '+%Y-%m-%d %H:%M:%S UTC')/g" pr-body.md
+        sed -i '' "s/COMMIT_HASH_PLACEHOLDER/$(git rev-parse --short HEAD)/g" pr-body.md
+        
         # Create pull request
         gh pr create \
           --title "Update Realm to $REALM_VERSION for Swift $SWIFT_VERSION" \
-          --body "## Summary
-- Updates Realm frameworks to version $REALM_VERSION for Swift $SWIFT_VERSION
-- Built using $XCODE_TYPE Xcode with automated workflow
-- Frameworks now hosted on GitHub Releases instead of external hosting
-
-## Changes
-- Updated \`$MANIFEST_FILE\` with new framework URLs and checksums
-- Frameworks built for platforms: macOS, iOS, watchOS (no tvOS per requirements)
-
-## Testing
-- [ ] Verify frameworks load correctly in a test project
-- [ ] Confirm Swift Package Manager resolves dependencies  
-- [ ] Test on target platforms (macOS, iOS, watchOS)
-
-## Release Details
-**Release:** $RELEASE_URL  
-**Build Type:** $XCODE_TYPE Xcode  
-**Swift Version:** $SWIFT_VERSION  
-**Build Date:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')
-
-🤖 Generated with automated workflow from commit $(git rev-parse --short HEAD)" \
+          --body-file pr-body.md \
           --head "$BRANCH_NAME" \
           --base main
         
