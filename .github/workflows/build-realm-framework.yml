@@ -1,14 +1,14 @@
-name: Build and Release Realm Framework
+name: Build Realm Framework
 
 on:
   workflow_dispatch:
     inputs:
       realm_version:
-        description: 'Realm version to build (e.g., v20.0.4)'
+        description: 'Realm version tag to build'
         required: true
         type: string
       use_beta_xcode:
-        description: 'Use Beta Xcode version'
+        description: 'Use Beta Xcode?'
         required: false
         type: boolean
         default: false
