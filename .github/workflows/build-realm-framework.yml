@@ -82,18 +82,34 @@ jobs:
     - name: Clone Realm Swift repository
       run: |
         echo "📥 Cloning realm-swift repository..."
-        git clone https://github.com/realm/realm-swift.git realm-build
-        cd realm-build
+        # Stash our RealmSPM files temporarily
+        mkdir -p /tmp/realmspm-backup
+        cp -r .github Package@swift-*.swift README.md plan.md /tmp/realmspm-backup/ 2>/dev/null || true
         
+        # Remove everything except .git to make room for realm-swift
+        find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} \;
+        
+        # Clone realm-swift repository and switch to correct version
+        git clone https://github.com/realm/realm-swift.git temp-realm
+        cd temp-realm
         echo "🔄 Checking out ${{ inputs.realm_version }}..."
         git checkout ${{ inputs.realm_version }}
+        cd ..
         
-        echo "✅ Successfully checked out ${{ inputs.realm_version }}"
-        git log -1 --oneline
+        # Copy all realm-swift files to current directory
+        cp -r temp-realm/* . 2>/dev/null || true
+        # Copy hidden files but skip .git to avoid conflicts
+        (cd temp-realm && find . -name '.*' -not -name '.git' -not -name '.' -not -name '..' -exec cp -r {} .. \;) 2>/dev/null || true
+        rm -rf temp-realm
+        
+        echo "✅ Successfully set up Realm ${{ inputs.realm_version }} source"
+        
+        # Restore our RealmSPM files (this will overwrite any conflicts)
+        cp -r /tmp/realmspm-backup/* . 2>/dev/null || true
+        rm -rf /tmp/realmspm-backup
     
     - name: Configure build script for supported platforms
       run: |
-        cd realm-build
         echo "📝 Configuring build.sh for supported platforms (macOS, iOS, watchOS only)..."
         
         # Backup original build.sh
@@ -108,17 +124,16 @@ jobs:
     
     - name: Clean build artifacts
       run: |
-        cd realm-build
         echo "🧹 Cleaning previous build artifacts..."
         rm -rf build
         echo "✅ Build directory cleaned"
     
     - name: Build Realm frameworks
       run: |
-        cd realm-build
         echo "🔨 Building Realm frameworks..."
         echo "Using Xcode: $(xcode-select -p)"
         echo "Swift version: $(swift --version | head -n1)"
+        echo "Working directory: $(pwd)"
         
         # Build with verbose output for debugging
         sh build.sh build
@@ -130,7 +145,7 @@ jobs:
     - name: Create framework archives
       id: create-archives
       run: |
-        cd realm-build/build/Release
+        cd build/Release
         
         echo "📦 Creating framework archives (preserving symlinks)..."
         
