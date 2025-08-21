@@ -166,7 +166,7 @@ jobs:
         RELEASE_TAG="${{ steps.release-naming.outputs.release_tag }}"
         REALM_VERSION="${{ inputs.realm_version }}"
         SWIFT_VERSION="${{ steps.swift-version.outputs.swift_version }}"
-        XCODE_TYPE="${{ inputs.use_beta_xcode == true && 'Beta' || 'Stable' }}"
+        XCODE_TYPE="${{ inputs.use_beta_xcode == 'true' && 'Beta' || 'Stable' }}"
         
         echo "🚀 Creating GitHub release..."
         
@@ -240,7 +240,7 @@ jobs:
         SWIFT_VERSION="${{ steps.swift-version.outputs.swift_version }}"
         MANIFEST_FILE="${{ steps.swift-version.outputs.manifest_file }}"
         RELEASE_URL="${{ steps.create-release.outputs.release_url }}"
-        XCODE_TYPE="${{ inputs.use_beta_xcode == true && 'Beta' || 'Stable' }}"
+        XCODE_TYPE="${{ inputs.use_beta_xcode == 'true' && 'Beta' || 'Stable' }}"
         
         # Configure git for commits
         git config user.name "github-actions[bot]"
@@ -252,14 +252,13 @@ jobs:
         
         # Stage and commit changes
         git add "$MANIFEST_FILE"
-        git commit -m "Update Realm to $REALM_VERSION for Swift $SWIFT_VERSION
-
-- Updated $MANIFEST_FILE with new framework URLs and checksums
-- Built with $XCODE_TYPE Xcode  
-- Platforms: macOS, iOS, watchOS
-- Release: $RELEASE_URL
-
-🤖 Generated with automated workflow"
+        git commit -m "Update Realm to $REALM_VERSION for Swift $SWIFT_VERSION" \
+          -m "- Updated $MANIFEST_FILE with new framework URLs and checksums" \
+          -m "- Built with $XCODE_TYPE Xcode" \
+          -m "- Platforms: macOS, iOS, watchOS" \
+          -m "- Release: $RELEASE_URL" \
+          -m "" \
+          -m "🤖 Generated with automated workflow"
         
         # Push branch
         git push origin "$BRANCH_NAME"
@@ -305,7 +304,7 @@ jobs:
         echo "### Build Details" >> $GITHUB_STEP_SUMMARY
         echo "- **Realm Version:** ${{ inputs.realm_version }}" >> $GITHUB_STEP_SUMMARY
         echo "- **Swift Version:** ${{ steps.swift-version.outputs.swift_version }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **Xcode Type:** ${{ inputs.use_beta_xcode == true && 'Beta' || 'Stable' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Xcode Type:** ${{ inputs.use_beta_xcode == 'true' && 'Beta' || 'Stable' }}" >> $GITHUB_STEP_SUMMARY
         echo "- **Platforms:** macOS, iOS, watchOS" >> $GITHUB_STEP_SUMMARY
         echo "- **Build Date:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
