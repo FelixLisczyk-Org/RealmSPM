@@ -179,9 +179,9 @@ jobs:
         
         echo "📦 Creating framework archives (preserving symlinks)..."
         
-        # Create zip archive files
-        zip -r Realm.xcframework.zip Realm.xcframework
-        zip -r RealmSwift.xcframework.zip RealmSwift.xcframework
+        # Create archives using ditto to preserve symlinks with keepParent
+        ditto -c -k --keepParent Realm.xcframework Realm.xcframework.zip
+        ditto -c -k --keepParent RealmSwift.xcframework RealmSwift.xcframework.zip
         
         echo "✅ Archives created successfully"
         ls -la *.zip
@@ -209,8 +209,9 @@ jobs:
         REALM_VERSION="${{ inputs.realm_version }}"
         XCODE_TYPE="${{ inputs.use_beta_xcode && 'Beta' || 'Stable' }}"
         
-        # Create release name and tag (include Xcode type for uniqueness)
-        RELEASE_NAME="Realm-${REALM_VERSION#v}-Swift-${SWIFT_VERSION}-${XCODE_TYPE}"
+        # Create release name and tag with timestamp for uniqueness
+        TIMESTAMP=$(date -u '+%Y%m%d-%H%M')
+        RELEASE_NAME="Realm-${REALM_VERSION#v}-Swift-${SWIFT_VERSION}-${XCODE_TYPE}-${TIMESTAMP}"
         RELEASE_TAG="${RELEASE_NAME}"
         
         echo "📋 Release naming:"
@@ -220,34 +221,6 @@ jobs:
         echo "release_name=$RELEASE_NAME" >> $GITHUB_OUTPUT
         echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
     
-    - name: Delete Existing Release and Tag
-      id: delete-existing
-      run: |
-        set -euo pipefail
-        RELEASE_TAG="${{ steps.release-naming.outputs.release_tag }}"
-        
-        echo "🗑️ Checking for existing release and tag: $RELEASE_TAG"
-        
-        # Delete existing release if it exists
-        if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-          echo "ℹ️ Deleting existing release: $RELEASE_TAG"
-          gh release delete "$RELEASE_TAG" --yes
-          echo "✅ Existing release deleted"
-        else
-          echo "ℹ️ No existing release found"
-        fi
-        
-        # Delete existing tag if it exists
-        if git tag -l | grep -q "^$RELEASE_TAG$"; then
-          echo "ℹ️ Deleting existing tag: $RELEASE_TAG"
-          git tag -d "$RELEASE_TAG" 2>/dev/null || true
-          git push origin --delete "$RELEASE_TAG" 2>/dev/null || true
-          echo "✅ Existing tag deleted"
-        else
-          echo "ℹ️ No existing tag found"
-        fi
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     
     - name: Update Package manifest
       id: update-manifest
@@ -356,7 +329,7 @@ jobs:
         echo "" >> release_notes.md
         echo "Built with automated workflow from commit $(git rev-parse --short HEAD)." >> release_notes.md
         
-        # Create new release (we already deleted any existing one)
+        # Create new release with unique timestamp
         gh release create "$RELEASE_TAG" \
           Realm.xcframework.zip \
           RealmSwift.xcframework.zip \
