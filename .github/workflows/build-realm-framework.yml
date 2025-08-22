@@ -86,10 +86,10 @@ jobs:
           sed -i '' "s/SWIFT_VERSION_PLACEHOLDER/$SWIFT_VERSION/g" "$MANIFEST_FILE"
           
           # Use placeholder values that will be updated later in the workflow
-          sed -i '' "s/REALM_URL_PLACEHOLDER/https:\/\/example.com\/placeholder\/Realm.xcframework.zip/g" "$MANIFEST_FILE"
-          sed -i '' "s/REALMSWIFT_URL_PLACEHOLDER/https:\/\/example.com\/placeholder\/RealmSwift.xcframework.zip/g" "$MANIFEST_FILE"
-          sed -i '' "s/REALM_CHECKSUM_PLACEHOLDER/placeholder-checksum-will-be-updated/g" "$MANIFEST_FILE"
-          sed -i '' "s/REALMSWIFT_CHECKSUM_PLACEHOLDER/placeholder-checksum-will-be-updated/g" "$MANIFEST_FILE"
+          sed -i '' "s|REALM_URL_PLACEHOLDER|https://example.com/placeholder/Realm.xcframework.zip|g" "$MANIFEST_FILE"
+          sed -i '' "s|REALMSWIFT_URL_PLACEHOLDER|https://example.com/placeholder/RealmSwift.xcframework.zip|g" "$MANIFEST_FILE"
+          sed -i '' "s|REALM_CHECKSUM_PLACEHOLDER|placeholder-realm-checksum|g" "$MANIFEST_FILE"
+          sed -i '' "s|REALMSWIFT_CHECKSUM_PLACEHOLDER|placeholder-realmswift-checksum|g" "$MANIFEST_FILE"
           
           echo "✅ Created new manifest file: $MANIFEST_FILE"
           echo "new_manifest_created=true" >> $GITHUB_OUTPUT
@@ -281,15 +281,13 @@ jobs:
         REALM_URL="${REPO_URL}/releases/download/${RELEASE_TAG}/Realm.xcframework.zip"
         REALMSWIFT_URL="${REPO_URL}/releases/download/${RELEASE_TAG}/RealmSwift.xcframework.zip"
         
-        # Update the manifest file URLs and checksums using perl for robust replacement
-        perl -i -pe "s|url: \"[^\"]*Realm\.xcframework\.zip\"|url: \"$REALM_URL\"|g" "$MANIFEST_FILE"
-        perl -i -pe "s|url: \"[^\"]*RealmSwift\.xcframework\.zip\"|url: \"$REALMSWIFT_URL\"|g" "$MANIFEST_FILE"
+        # Update the manifest file URLs and checksums using sed for reliable replacement
+        sed -i '' "s|url: \"[^\"]*Realm\.xcframework\.zip\"|url: \"$REALM_URL\"|g" "$MANIFEST_FILE"
+        sed -i '' "s|url: \"[^\"]*RealmSwift\.xcframework\.zip\"|url: \"$REALMSWIFT_URL\"|g" "$MANIFEST_FILE"
         
-        # Update checksums - target specific frameworks by URL context
-        # Update Realm checksum (find checksum line that follows Realm URL)
-        perl -i -pe "BEGIN{undef $/;} s|(url: \"[^\"]*Realm\.xcframework\.zip\",\s*checksum: \")[^\"]*(\")|\$1$REALM_CHECKSUM\$2|gs" "$MANIFEST_FILE"
-        # Update RealmSwift checksum (find checksum line that follows RealmSwift URL)  
-        perl -i -pe "BEGIN{undef $/;} s|(url: \"[^\"]*RealmSwift\.xcframework\.zip\",\s*checksum: \")[^\"]*(\")|\$1$REALMSWIFT_CHECKSUM\$2|gs" "$MANIFEST_FILE"
+        # Update checksums - target placeholder values specifically to avoid corruption
+        sed -i '' "s|checksum: \"placeholder-realm-checksum\"|checksum: \"$REALM_CHECKSUM\"|g" "$MANIFEST_FILE"
+        sed -i '' "s|checksum: \"placeholder-realmswift-checksum\"|checksum: \"$REALMSWIFT_CHECKSUM\"|g" "$MANIFEST_FILE"
         
         # Check if we need to create a PR
         if [[ "$NEW_MANIFEST_CREATED" == "true" ]]; then
