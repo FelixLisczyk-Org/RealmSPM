@@ -273,6 +273,7 @@ jobs:
         REALM_CHECKSUM="${{ steps.create-archives.outputs.realm_checksum }}"
         REALMSWIFT_CHECKSUM="${{ steps.create-archives.outputs.realmswift_checksum }}"
         REPO_URL="https://github.com/${{ github.repository }}"
+        NEW_MANIFEST_CREATED="${{ steps.swift-version.outputs.new_manifest_created }}"
         
         echo "📝 Updating $MANIFEST_FILE with new release URLs and checksums..."
         
@@ -290,12 +291,17 @@ jobs:
         # Update RealmSwift checksum (find checksum line that follows RealmSwift URL)  
         perl -i -pe "BEGIN{undef $/;} s|(url: \"[^\"]*RealmSwift\.xcframework\.zip\",\s*checksum: \")[^\"]*(\")|\$1$REALMSWIFT_CHECKSUM\$2|gs" "$MANIFEST_FILE"
         
-        # Check if the manifest file actually changed
-        if git diff --quiet "$MANIFEST_FILE"; then
+        # Check if we need to create a PR
+        if [[ "$NEW_MANIFEST_CREATED" == "true" ]]; then
+          echo "✅ New manifest file $MANIFEST_FILE was created and updated - PR needed"
+          echo "Updated content:"
+          cat "$MANIFEST_FILE"
+          echo "manifest_updated=true" >> $GITHUB_OUTPUT
+        elif git diff --quiet "$MANIFEST_FILE"; then
           echo "ℹ️ No changes detected in $MANIFEST_FILE - URLs and checksums are already up to date"
           echo "manifest_updated=false" >> $GITHUB_OUTPUT
         else
-          echo "✅ Updated $MANIFEST_FILE with new URLs and checksums"
+          echo "✅ Updated existing $MANIFEST_FILE with new URLs and checksums"
           echo "Changes made:"
           git diff "$MANIFEST_FILE"
           echo "manifest_updated=true" >> $GITHUB_OUTPUT
