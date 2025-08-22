@@ -285,9 +285,14 @@ jobs:
         sed -i '' "s|url: \"[^\"]*Realm\.xcframework\.zip\"|url: \"$REALM_URL\"|g" "$MANIFEST_FILE"
         sed -i '' "s|url: \"[^\"]*RealmSwift\.xcframework\.zip\"|url: \"$REALMSWIFT_URL\"|g" "$MANIFEST_FILE"
         
-        # Update checksums - target placeholder values specifically to avoid corruption
+        # Update checksums - handle both new manifests (with placeholders) and existing manifests
+        # Try placeholder replacement first (for new manifests)
         sed -i '' "s|checksum: \"placeholder-realm-checksum\"|checksum: \"$REALM_CHECKSUM\"|g" "$MANIFEST_FILE"
         sed -i '' "s|checksum: \"placeholder-realmswift-checksum\"|checksum: \"$REALMSWIFT_CHECKSUM\"|g" "$MANIFEST_FILE"
+        
+        # For existing manifests, replace any checksum that follows a Realm URL (range-based replacement)
+        sed -i '' "/url:.*Realm\.xcframework\.zip/,/checksum:/ s|checksum: \"[^\"]*\"|checksum: \"$REALM_CHECKSUM\"|" "$MANIFEST_FILE"
+        sed -i '' "/url:.*RealmSwift\.xcframework\.zip/,/checksum:/ s|checksum: \"[^\"]*\"|checksum: \"$REALMSWIFT_CHECKSUM\"|" "$MANIFEST_FILE"
         
         # Check if we need to create a PR
         if [[ "$NEW_MANIFEST_CREATED" == "true" ]]; then
