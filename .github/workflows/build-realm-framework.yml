@@ -68,33 +68,42 @@ jobs:
         echo "Detected Swift version: $SWIFT_VERSION"
         echo "swift_version=$SWIFT_VERSION" >> $GITHUB_OUTPUT
         
-        # Determine target manifest file for this Swift version
-        MANIFEST_FILE="Package@swift-${SWIFT_VERSION}.swift"
-        
-        # Check if manifest exists, if not create it from template
-        if [[ ! -f "$MANIFEST_FILE" ]]; then
-          echo "📝 Creating new manifest file: $MANIFEST_FILE"
+        # Determine target manifest file based on Xcode type
+        if [[ "${{ inputs.use_beta_xcode }}" == "true" ]]; then
+          # Beta Xcode: Use version-specific manifest
+          MANIFEST_FILE="Package@swift-${SWIFT_VERSION}.swift"
+          echo "📋 Using beta Xcode - target manifest: $MANIFEST_FILE"
           
-          # Check if template exists
-          if [[ ! -f "templates/Package.swift.template" ]]; then
-            echo "::error title=Missing Template::Package.swift.template not found in templates/ directory"
-            exit 1
+          # Check if manifest exists, if not create it from template
+          if [[ ! -f "$MANIFEST_FILE" ]]; then
+            echo "📝 Creating new manifest file: $MANIFEST_FILE"
+            
+            # Check if template exists
+            if [[ ! -f "templates/Package.swift.template" ]]; then
+              echo "::error title=Missing Template::Package.swift.template not found in templates/ directory"
+              exit 1
+            fi
+            
+            # Create new manifest from template with Swift version
+            cp "templates/Package.swift.template" "$MANIFEST_FILE"
+            sed -i '' "s/SWIFT_VERSION_PLACEHOLDER/$SWIFT_VERSION/g" "$MANIFEST_FILE"
+            
+            # Use placeholder values that will be updated later in the workflow
+            sed -i '' "s|REALM_URL_PLACEHOLDER|https://example.com/placeholder/Realm.xcframework.zip|g" "$MANIFEST_FILE"
+            sed -i '' "s|REALMSWIFT_URL_PLACEHOLDER|https://example.com/placeholder/RealmSwift.xcframework.zip|g" "$MANIFEST_FILE"
+            sed -i '' "s|REALM_CHECKSUM_PLACEHOLDER|placeholder-realm-checksum|g" "$MANIFEST_FILE"
+            sed -i '' "s|REALMSWIFT_CHECKSUM_PLACEHOLDER|placeholder-realmswift-checksum|g" "$MANIFEST_FILE"
+            
+            echo "✅ Created new manifest file: $MANIFEST_FILE"
+            echo "new_manifest_created=true" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Found existing manifest file: $MANIFEST_FILE"
+            echo "new_manifest_created=false" >> $GITHUB_OUTPUT
           fi
-          
-          # Create new manifest from template with Swift version
-          cp "templates/Package.swift.template" "$MANIFEST_FILE"
-          sed -i '' "s/SWIFT_VERSION_PLACEHOLDER/$SWIFT_VERSION/g" "$MANIFEST_FILE"
-          
-          # Use placeholder values that will be updated later in the workflow
-          sed -i '' "s|REALM_URL_PLACEHOLDER|https://example.com/placeholder/Realm.xcframework.zip|g" "$MANIFEST_FILE"
-          sed -i '' "s|REALMSWIFT_URL_PLACEHOLDER|https://example.com/placeholder/RealmSwift.xcframework.zip|g" "$MANIFEST_FILE"
-          sed -i '' "s|REALM_CHECKSUM_PLACEHOLDER|placeholder-realm-checksum|g" "$MANIFEST_FILE"
-          sed -i '' "s|REALMSWIFT_CHECKSUM_PLACEHOLDER|placeholder-realmswift-checksum|g" "$MANIFEST_FILE"
-          
-          echo "✅ Created new manifest file: $MANIFEST_FILE"
-          echo "new_manifest_created=true" >> $GITHUB_OUTPUT
         else
-          echo "✅ Found existing manifest file: $MANIFEST_FILE"
+          # Stable Xcode: Use main Package.swift
+          MANIFEST_FILE="Package.swift"
+          echo "📋 Using stable Xcode - target manifest: $MANIFEST_FILE"
           echo "new_manifest_created=false" >> $GITHUB_OUTPUT
         fi
         
@@ -105,7 +114,7 @@ jobs:
         echo "📥 Cloning realm-swift repository..."
         # Stash our RealmSPM files temporarily
         mkdir -p /tmp/realmspm-backup
-        cp -r .github Package@swift-*.swift README.md plan.md templates /tmp/realmspm-backup/ 2>/dev/null || true
+        cp -r .github Package@swift-*.swift Package.swift README.md plan.md templates /tmp/realmspm-backup/ 2>/dev/null || true
         
         # Remove everything except .git to make room for realm-swift
         find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} \;
