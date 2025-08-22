@@ -170,9 +170,9 @@ jobs:
         
         echo "📦 Creating framework archives (preserving symlinks)..."
         
-        # Create archives using ditto to preserve symlinks
-        ditto -c -k --sequesterRsrc Realm.xcframework Realm.xcframework.zip
-        ditto -c -k --sequesterRsrc RealmSwift.xcframework RealmSwift.xcframework.zip
+        # Create zip archive files
+        zip -r Realm.xcframework.zip Realm.xcframework
+        zip -r RealmSwift.xcframework.zip RealmSwift.xcframework
         
         echo "✅ Archives created successfully"
         ls -la *.zip
