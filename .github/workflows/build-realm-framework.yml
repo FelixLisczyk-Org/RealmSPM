@@ -68,15 +68,36 @@ jobs:
         echo "Detected Swift version: $SWIFT_VERSION"
         echo "swift_version=$SWIFT_VERSION" >> $GITHUB_OUTPUT
         
-        # Validate we have a corresponding Package manifest
+        # Determine target manifest file for this Swift version
         MANIFEST_FILE="Package@swift-${SWIFT_VERSION}.swift"
+        
+        # Check if manifest exists, if not create it from template
         if [[ ! -f "$MANIFEST_FILE" ]]; then
-          echo "::error title=Missing Package Manifest::No $MANIFEST_FILE found for Swift $SWIFT_VERSION"
-          echo "Available manifests:"
-          ls -la Package@swift-*.swift || echo "No Swift-specific manifests found"
-          exit 1
+          echo "📝 Creating new manifest file: $MANIFEST_FILE"
+          
+          # Check if template exists
+          if [[ ! -f "templates/Package.swift.template" ]]; then
+            echo "::error title=Missing Template::Package.swift.template not found in templates/ directory"
+            exit 1
+          fi
+          
+          # Create new manifest from template with Swift version
+          cp "templates/Package.swift.template" "$MANIFEST_FILE"
+          sed -i '' "s/SWIFT_VERSION_PLACEHOLDER/$SWIFT_VERSION/g" "$MANIFEST_FILE"
+          
+          # Use placeholder values that will be updated later in the workflow
+          sed -i '' "s/REALM_URL_PLACEHOLDER/https:\/\/example.com\/placeholder\/Realm.xcframework.zip/g" "$MANIFEST_FILE"
+          sed -i '' "s/REALMSWIFT_URL_PLACEHOLDER/https:\/\/example.com\/placeholder\/RealmSwift.xcframework.zip/g" "$MANIFEST_FILE"
+          sed -i '' "s/REALM_CHECKSUM_PLACEHOLDER/placeholder-checksum-will-be-updated/g" "$MANIFEST_FILE"
+          sed -i '' "s/REALMSWIFT_CHECKSUM_PLACEHOLDER/placeholder-checksum-will-be-updated/g" "$MANIFEST_FILE"
+          
+          echo "✅ Created new manifest file: $MANIFEST_FILE"
+          echo "new_manifest_created=true" >> $GITHUB_OUTPUT
+        else
+          echo "✅ Found existing manifest file: $MANIFEST_FILE"
+          echo "new_manifest_created=false" >> $GITHUB_OUTPUT
         fi
-        echo "✅ Found corresponding manifest: $MANIFEST_FILE"
+        
         echo "manifest_file=$MANIFEST_FILE" >> $GITHUB_OUTPUT
     
     - name: Clone Realm Swift repository

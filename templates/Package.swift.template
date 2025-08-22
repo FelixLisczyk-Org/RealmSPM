@@ -1,0 +1,34 @@
+// swift-tools-version:SWIFT_VERSION_PLACEHOLDER
+
+import PackageDescription
+
+let package = Package(
+    name: "RealmSPM",
+    platforms: [
+        .macOS(.v12),
+        .iOS(.v15),
+        .watchOS(.v8)
+    ],
+    products: [
+        .library(
+            name: "Realm",
+            targets: ["Realm"]
+        ),
+        .library(
+            name: "RealmSwift",
+            targets: ["Realm", "RealmSwift"]
+        )
+    ],
+    targets: [
+        .binaryTarget(
+            name: "Realm",
+            url: "REALM_URL_PLACEHOLDER",
+            checksum: "REALM_CHECKSUM_PLACEHOLDER"
+        ),
+        .binaryTarget(
+            name: "RealmSwift",
+            url: "REALMSWIFT_URL_PLACEHOLDER",
+            checksum: "REALMSWIFT_CHECKSUM_PLACEHOLDER"
+        )
+    ]
+)
