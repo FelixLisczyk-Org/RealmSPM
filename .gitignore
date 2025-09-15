@@ -27,6 +27,8 @@ Tuist/.build
 .claude*
 usage_tracking2.json
 uploads/
+plan.md
+task.md
 
 # Neovim
 .nvim/*
