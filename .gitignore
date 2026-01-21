@@ -20,6 +20,9 @@ Pods
 Derived/
 Tuist/.build
 
+# Test Results
+log/
+
 # Aider
 .aider*
 
