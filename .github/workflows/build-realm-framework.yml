@@ -155,7 +155,7 @@ jobs:
     - name: Clean build artifacts
       run: |
         echo "🧹 Cleaning previous build artifacts..."
-        rm -rf build
+        [ -e build ] && rm -rf build
         echo "✅ Build directory cleaned"
     
     - name: Build Realm frameworks
