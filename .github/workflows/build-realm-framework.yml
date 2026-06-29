@@ -70,6 +70,22 @@ jobs:
         
         # Determine target manifest file based on Xcode type
         if [[ "${{ inputs.use_beta_xcode }}" == "true" ]]; then
+          # Beta Xcode: a Package@swift-<v>.swift manifest only takes precedence over
+          # Package.swift when its version is the greatest version <= the resolving
+          # toolchain's Swift version. If the beta Swift version is not strictly greater
+          # than the stable Swift version, the beta manifest would also be selected by
+          # stable toolchains and shadow Package.swift with ABI-incompatible frameworks.
+          STABLE_SWIFT_VERSION=$(grep -o 'Swift-[0-9][0-9.]*' Package.swift | head -1 | sed 's/Swift-//')
+          if [[ -z "$STABLE_SWIFT_VERSION" ]]; then
+            echo "⚠️ Could not determine stable Swift version from Package.swift - skipping beta version guard"
+          elif [[ "$SWIFT_VERSION" == "$STABLE_SWIFT_VERSION" ]] || \
+               [[ "$(printf '%s\n%s\n' "$SWIFT_VERSION" "$STABLE_SWIFT_VERSION" | sort -V | tail -n1)" != "$SWIFT_VERSION" ]]; then
+            echo "::error title=Invalid Beta Swift Version::Beta Swift version ($SWIFT_VERSION) must be strictly greater than the stable Swift version ($STABLE_SWIFT_VERSION) recorded in Package.swift. Otherwise the version-specific manifest would also be selected by stable toolchains, shadowing Package.swift with ABI-incompatible beta frameworks."
+            exit 1
+          else
+            echo "✅ Beta Swift version $SWIFT_VERSION is strictly greater than stable $STABLE_SWIFT_VERSION"
+          fi
+
           # Beta Xcode: Use version-specific manifest
           MANIFEST_FILE="Package@swift-${SWIFT_VERSION}.swift"
           echo "📋 Using beta Xcode - target manifest: $MANIFEST_FILE"
@@ -105,6 +121,28 @@ jobs:
           MANIFEST_FILE="Package.swift"
           echo "📋 Using stable Xcode - target manifest: $MANIFEST_FILE"
           echo "new_manifest_created=false" >> $GITHUB_OUTPUT
+
+          # Prune superseded beta manifests: once the stable Swift version reaches or
+          # exceeds a beta manifest's version, that Package@swift-<v>.swift would be the
+          # greatest version <= a stable toolchain's Swift version, so it would shadow
+          # Package.swift with stale beta frameworks. Mark any whose version is <= the
+          # stable Swift version for removal (the commit step records the deletion).
+          STALE_MANIFESTS=""
+          shopt -s nullglob
+          for f in Package@swift-*.swift; do
+            V="${f#Package@swift-}"
+            V="${V%.swift}"
+            if [[ "$V" == "$SWIFT_VERSION" ]] || \
+               [[ "$(printf '%s\n%s\n' "$V" "$SWIFT_VERSION" | sort -V | tail -n1)" != "$V" ]]; then
+              echo "🗑️ Marking superseded beta manifest for removal: $f (version $V <= stable $SWIFT_VERSION)"
+              STALE_MANIFESTS="$STALE_MANIFESTS $f"
+            else
+              echo "↪️ Keeping beta manifest: $f (version $V > stable $SWIFT_VERSION)"
+            fi
+          done
+          shopt -u nullglob
+          STALE_MANIFESTS="$(echo "$STALE_MANIFESTS" | xargs)"
+          echo "stale_manifests=$STALE_MANIFESTS" >> $GITHUB_OUTPUT
         fi
         
         echo "manifest_file=$MANIFEST_FILE" >> $GITHUB_OUTPUT
@@ -268,28 +306,41 @@ jobs:
         fi
     
     - name: Commit to Main Branch
-      if: steps.update-manifest.outputs.manifest_updated == 'true'
+      if: steps.update-manifest.outputs.manifest_updated == 'true' || steps.swift-version.outputs.stale_manifests != ''
       run: |
         REALM_VERSION="${{ inputs.realm_version }}"
         SWIFT_VERSION="${{ steps.swift-version.outputs.swift_version }}"
         MANIFEST_FILE="${{ steps.swift-version.outputs.manifest_file }}"
+        STALE_MANIFESTS="${{ steps.swift-version.outputs.stale_manifests }}"
         RELEASE_URL="TBD"  # Release will be created after commit
         XCODE_TYPE="${{ inputs.use_beta_xcode && 'Beta' || 'Stable' }}"
-        
+
         # Configure git for commits
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
-        
-        # Stage and commit changes directly to main
+
+        # Stage the manifest and remove any superseded beta manifests
         git add "$MANIFEST_FILE"
-        git commit -m "Update Realm to $REALM_VERSION for Swift $SWIFT_VERSION" \
+        if [[ -n "$STALE_MANIFESTS" ]]; then
+          echo "🗑️ Removing superseded beta manifests: $STALE_MANIFESTS"
+          git rm -f --ignore-unmatch $STALE_MANIFESTS
+        fi
+
+        # Build commit message, noting any pruned manifests
+        COMMIT_ARGS=(-m "Update Realm to $REALM_VERSION for Swift $SWIFT_VERSION" \
           -m "- Updated $MANIFEST_FILE with new framework URLs and checksums" \
           -m "- Built with $XCODE_TYPE Xcode" \
-          -m "- Platforms: macOS, iOS, watchOS" \
-          -m "- Release: Will be created after commit" \
+          -m "- Platforms: macOS, iOS, watchOS")
+        if [[ -n "$STALE_MANIFESTS" ]]; then
+          COMMIT_ARGS+=(-m "- Removed superseded beta manifests: $STALE_MANIFESTS")
+        fi
+        COMMIT_ARGS+=(-m "- Release: Will be created after commit" \
           -m "" \
-          -m "🤖 Generated with automated workflow"
-        
+          -m "🤖 Generated with automated workflow")
+
+        # Commit changes directly to main
+        git commit "${COMMIT_ARGS[@]}"
+
         # Push directly to main
         git push origin main
         
