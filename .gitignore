@@ -33,6 +33,7 @@ uploads/
 plan.md
 task.md
 verification-issues.md
+coverage-gaps.md
 
 # Neovim
 .nvim/*
