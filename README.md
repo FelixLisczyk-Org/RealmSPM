@@ -36,36 +36,6 @@ The workflow will automatically:
 6. **Manifest Update**: Updates the correct `Package@swift-X.Y.swift` file
 7. **Direct Commit**: Commits changes directly to main branch
 
-## Legacy Manual Build Process
-
-> ⚠️ **Deprecated**: The automated workflow above is now the recommended approach. This manual process is kept for reference and emergency situations only.
-
-<details>
-<summary>Show legacy manual process</summary>
-
-### Precompiled Framework
-
-1. Download latest release from [GitHub](https://github.com/realm/realm-swift/releases).
-2. Run `swift package compute-checksum` on both `zip` files
-3. Update archive paths and checksums in appropriate `Package@swift-X.Y.swift` file
-
-### Manual Build
-
-> This approach was previously required when using a beta release of Xcode. Swift module stability (`REALM_BUILD_LIBRARY_FOR_DISTRIBUTION`) is not enabled in the precompiled GitHub builds.
-
-1. Clone Git repository and check out the latest tag. (`git clone https://github.com/realm/realm-swift.git` and `git checkout <tag>`)
-2. Open `build.sh` and remove unnecessary platforms. (`PLATFORMS="${*:-osx ios watchos}"`)
-3. Delete the `build` folder to clean up old artifacts.
-4. Run `sh build.sh build` in the repository folder.
-5. Compress both `xcframework` files in `./build/Release/`. (use Finder instead of `zip` command to preserve symlinks)
-6. Run `swift package compute-checksum` on both `zip` files.
-7. Upload both `zip` files to webspace.
-8. Update archive paths and checksums in appropriate `Package@swift-X.Y.swift` file.
-
-**Note:** Do not change the `REALM_BUILD_LIBRARY_FOR_DISTRIBUTION` build setting in the Realm repository. Changing this setting has previously caused problems when compiling apps with the `generic/platform=iOS Simulator` destination.
-
-</details>
-
 ## Package Manifest Structure
 
 This repository uses **Swift version-specific Package manifests** instead of conditional compilation:
