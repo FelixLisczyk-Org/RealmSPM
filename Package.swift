@@ -22,13 +22,13 @@ let package = Package(
     targets: [
         .binaryTarget(
             name: "Realm",
-            url: "https://github.com/FelixLisczyk-Org/RealmSPM/releases/download/Realm-20.0.5-Swift-6.3.3-Stable-20260829-1733/Realm.xcframework.zip",
-            checksum: "0b0c693029c49796e2f282ccab541b40556030b131dc821aa9d754f39a32c520"
+            url: "https://github.com/FelixLisczyk-Org/RealmSPM/releases/download/Realm-20.0.5-Swift-6.4-Stable-20260910-0430/Realm.xcframework.zip",
+            checksum: "0a5a4c9236f3f295763ace23f5ece39a11e853bce6165130d4ce4adc8e840589"
         ),
         .binaryTarget(
             name: "RealmSwift",
-            url: "https://github.com/FelixLisczyk-Org/RealmSPM/releases/download/Realm-20.0.5-Swift-6.3.3-Stable-20260829-1733/RealmSwift.xcframework.zip",
-            checksum: "d0c674d05b331c5957454bba7865cbde15c95bc596e73a08a6c9cc9415aa516d"
+            url: "https://github.com/FelixLisczyk-Org/RealmSPM/releases/download/Realm-20.0.5-Swift-6.4-Stable-20260910-0430/RealmSwift.xcframework.zip",
+            checksum: "35ae983fb1a2fca3c5ee21f7cf03cf085baa5f12ca11c3ea94c9b96b46ff05cc"
         )
     ]
 )
