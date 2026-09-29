@@ -62,7 +62,17 @@ jobs:
         
         echo "Detected Swift version: $SWIFT_VERSION"
         echo "swift_version=$SWIFT_VERSION" >> $GITHUB_OUTPUT
-        
+
+        # The short Swift version (e.g. 6.4) is shared by several Xcode releases. The full
+        # compiler build (e.g. swiftlang-6.4.0.34.1) tells whether two toolchains actually differ.
+        SWIFTLANG_BUILD=$(swift --version 2>&1 | grep -o 'swiftlang-[0-9][0-9.]*' | head -1)
+        XCODE_VERSION=$(xcodebuild -version | awk '/^Xcode/ {print $2}')
+        XCODE_BUILD=$(xcodebuild -version | awk '/^Build version/ {print $3}')
+        echo "Detected compiler build: ${SWIFTLANG_BUILD:-unknown} (Xcode $XCODE_VERSION, $XCODE_BUILD)"
+        echo "swiftlang_build=$SWIFTLANG_BUILD" >> $GITHUB_OUTPUT
+        echo "xcode_version=$XCODE_VERSION" >> $GITHUB_OUTPUT
+        echo "xcode_build=$XCODE_BUILD" >> $GITHUB_OUTPUT
+
         # Determine target manifest file based on Xcode type
         if [[ "${{ inputs.use_beta_xcode }}" == "true" ]]; then
           # Beta Xcode: a Package@swift-<v>.swift manifest only takes precedence over
@@ -71,10 +81,26 @@ jobs:
           # than the stable Swift version, the beta manifest would also be selected by
           # stable toolchains and shadow Package.swift with ABI-incompatible frameworks.
           STABLE_SWIFT_VERSION=$(grep -o 'Swift-[0-9][0-9.]*' Package.swift | head -1 | sed 's/Swift-//')
+          # Recorded by stable runs, see "Update Package manifest"
+          STABLE_SWIFTLANG_BUILD=$(grep -o 'swiftlang-[0-9][0-9.]*' Package.swift | head -1)
           if [[ -z "$STABLE_SWIFT_VERSION" ]]; then
             echo "⚠️ Could not determine stable Swift version from Package.swift - skipping beta version guard"
-          elif [[ "$SWIFT_VERSION" == "$STABLE_SWIFT_VERSION" ]] || \
-               [[ "$(printf '%s\n%s\n' "$SWIFT_VERSION" "$STABLE_SWIFT_VERSION" | sort -V | tail -n1)" != "$SWIFT_VERSION" ]]; then
+          elif [[ "$SWIFT_VERSION" == "$STABLE_SWIFT_VERSION" ]] && \
+               [[ -n "$SWIFTLANG_BUILD" ]] && [[ "$SWIFTLANG_BUILD" == "$STABLE_SWIFTLANG_BUILD" ]]; then
+            # Same compiler build as stable: the frameworks in Package.swift already work with
+            # this beta Xcode, so there is nothing to build.
+            echo "::notice title=Nothing to Build::Beta Xcode $XCODE_VERSION ($XCODE_BUILD) uses the same compiler ($SWIFTLANG_BUILD) as the stable frameworks in Package.swift. Those frameworks already work with this beta."
+            echo "## ℹ️ Nothing to Build" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Beta Xcode $XCODE_VERSION ($XCODE_BUILD) uses the same compiler (\`$SWIFTLANG_BUILD\`) as the stable frameworks in \`Package.swift\`. Those frameworks already work with this beta." >> $GITHUB_STEP_SUMMARY
+            echo "skip_build=true" >> $GITHUB_OUTPUT
+            exit 0
+          elif [[ "$SWIFT_VERSION" == "$STABLE_SWIFT_VERSION" ]]; then
+            # Same short Swift version but a different (or unknown) compiler build. SwiftPM selects
+            # manifests by short Swift version only, so a separate beta manifest cannot be served.
+            echo "::error title=Beta Compiler Differs From Stable::Beta Xcode $XCODE_VERSION ($XCODE_BUILD) uses compiler ${SWIFTLANG_BUILD:-unknown}, but the stable frameworks in Package.swift were built with ${STABLE_SWIFTLANG_BUILD:-an unrecorded compiler build}. Both report Swift $SWIFT_VERSION, and SwiftPM selects manifests by Swift version only, so a separate beta manifest would also be selected by stable toolchains."
+            exit 1
+          elif [[ "$(printf '%s\n%s\n' "$SWIFT_VERSION" "$STABLE_SWIFT_VERSION" | sort -V | tail -n1)" != "$SWIFT_VERSION" ]]; then
             echo "::error title=Invalid Beta Swift Version::Beta Swift version ($SWIFT_VERSION) must be strictly greater than the stable Swift version ($STABLE_SWIFT_VERSION) recorded in Package.swift. Otherwise the version-specific manifest would also be selected by stable toolchains, shadowing Package.swift with ABI-incompatible beta frameworks."
             exit 1
           else
@@ -143,6 +169,7 @@ jobs:
         echo "manifest_file=$MANIFEST_FILE" >> $GITHUB_OUTPUT
     
     - name: Clone Realm Swift repository
+      if: steps.swift-version.outputs.skip_build != 'true'
       run: |
         echo "📥 Cloning realm-swift repository..."
         # Stash our RealmSPM files temporarily
@@ -172,6 +199,7 @@ jobs:
         rm -rf /tmp/realmspm-backup
     
     - name: Configure build script for supported platforms
+      if: steps.swift-version.outputs.skip_build != 'true'
       run: |
         echo "📝 Configuring build.sh for supported platforms (macOS, iOS, watchOS only)..."
         
@@ -186,12 +214,14 @@ jobs:
         grep "PLATFORMS=" build.sh
     
     - name: Clean build artifacts
+      if: steps.swift-version.outputs.skip_build != 'true'
       run: |
         echo "🧹 Cleaning previous build artifacts..."
         [ -e build ] && rm -rf build
         echo "✅ Build directory cleaned"
     
     - name: Build Realm frameworks
+      if: steps.swift-version.outputs.skip_build != 'true'
       run: |
         echo "🔨 Building Realm frameworks..."
         echo "Using Xcode: $(xcode-select -p)"
@@ -206,6 +236,7 @@ jobs:
         ls -la build/Release/
     
     - name: Create framework archives
+      if: steps.swift-version.outputs.skip_build != 'true'
       id: create-archives
       run: |
         cd build/Release
@@ -236,6 +267,7 @@ jobs:
         mv RealmSwift.xcframework.zip ../../
     
     - name: Determine release naming
+      if: steps.swift-version.outputs.skip_build != 'true'
       id: release-naming
       run: |
         SWIFT_VERSION="${{ steps.swift-version.outputs.swift_version }}"
@@ -256,6 +288,7 @@ jobs:
     
     
     - name: Update Package manifest
+      if: steps.swift-version.outputs.skip_build != 'true'
       id: update-manifest
       run: |
         MANIFEST_FILE="${{ steps.swift-version.outputs.manifest_file }}"
@@ -264,6 +297,9 @@ jobs:
         REALMSWIFT_CHECKSUM="${{ steps.create-archives.outputs.realmswift_checksum }}"
         REPO_URL="https://github.com/${{ github.repository }}"
         NEW_MANIFEST_CREATED="${{ steps.swift-version.outputs.new_manifest_created }}"
+        SWIFTLANG_BUILD="${{ steps.swift-version.outputs.swiftlang_build }}"
+        XCODE_VERSION="${{ steps.swift-version.outputs.xcode_version }}"
+        XCODE_BUILD="${{ steps.swift-version.outputs.xcode_build }}"
         
         echo "📝 Updating $MANIFEST_FILE with new release URLs and checksums..."
         
@@ -283,7 +319,19 @@ jobs:
         # For existing manifests, replace any checksum that follows a Realm URL (range-based replacement)
         sed -i '' "/url:.*Realm\.xcframework\.zip/,/checksum:/ s|checksum: \"[^\"]*\"|checksum: \"$REALM_CHECKSUM\"|" "$MANIFEST_FILE"
         sed -i '' "/url:.*RealmSwift\.xcframework\.zip/,/checksum:/ s|checksum: \"[^\"]*\"|checksum: \"$REALMSWIFT_CHECKSUM\"|" "$MANIFEST_FILE"
-        
+
+        # Record the stable compiler build so beta runs can tell whether their compiler differs
+        if [[ "$MANIFEST_FILE" == "Package.swift" && -n "$SWIFTLANG_BUILD" ]]; then
+          BUILD_STAMP="// Built with Xcode $XCODE_VERSION ($XCODE_BUILD), $SWIFTLANG_BUILD"
+          if grep -q '^// Built with Xcode ' "$MANIFEST_FILE"; then
+            sed -i '' "s|^// Built with Xcode .*|$BUILD_STAMP|" "$MANIFEST_FILE"
+          else
+            # Insert after the swift-tools-version line, which must stay first
+            { head -n 1 "$MANIFEST_FILE"; echo "$BUILD_STAMP"; tail -n +2 "$MANIFEST_FILE"; } > "$MANIFEST_FILE.tmp"
+            mv "$MANIFEST_FILE.tmp" "$MANIFEST_FILE"
+          fi
+        fi
+
         # Check if we need to create a PR
         if [[ "$NEW_MANIFEST_CREATED" == "true" ]]; then
           echo "✅ New manifest file $MANIFEST_FILE was created and updated - PR needed"
@@ -345,6 +393,7 @@ jobs:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     
     - name: Create GitHub Release
+      if: steps.swift-version.outputs.skip_build != 'true'
       id: create-release
       run: |
         set -euo pipefail
@@ -393,6 +442,7 @@ jobs:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     
     - name: Workflow Summary
+      if: steps.swift-version.outputs.skip_build != 'true'
       run: |
         echo "## 🎉 Realm Framework Build Complete!" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY

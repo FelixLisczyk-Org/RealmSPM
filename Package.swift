@@ -1,4 +1,5 @@
 // swift-tools-version:6.1
+// Built with Xcode 27.0 (27A266a), swiftlang-6.4.0.34.1
 
 import PackageDescription
 
