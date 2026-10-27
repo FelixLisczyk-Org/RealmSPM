@@ -1,5 +1,5 @@
 // swift-tools-version:6.1
-// Built with Xcode 27.0 (27A266a), swiftlang-6.4.0.34.1
+// Built with Xcode 27.2 (27B48), swiftlang-6.4.2.1.9
 
 import PackageDescription
 
@@ -23,13 +23,13 @@ let package = Package(
     targets: [
         .binaryTarget(
             name: "Realm",
-            url: "https://github.com/FelixLisczyk-Org/RealmSPM/releases/download/Realm-20.0.6-Swift-6.4-Stable-20260927-1040/Realm.xcframework.zip",
-            checksum: "81ec53a71d8eeef326c1d15d10ea2602b024861e2dcbe5be6a4d38d944eed097"
+            url: "https://github.com/FelixLisczyk-Org/RealmSPM/releases/download/Realm-20.0.6-Swift-6.4.2-Stable-20261027-0918/Realm.xcframework.zip",
+            checksum: "44ca2066cbb37171d882c18e523d8d4d4ae5a69e13faed8a47118f87b65bf284"
         ),
         .binaryTarget(
             name: "RealmSwift",
-            url: "https://github.com/FelixLisczyk-Org/RealmSPM/releases/download/Realm-20.0.6-Swift-6.4-Stable-20260927-1040/RealmSwift.xcframework.zip",
-            checksum: "2f44985f2432b843f1d1d73b865195fd5610d814bf8cd00f0c5a1d982ce54fcd"
+            url: "https://github.com/FelixLisczyk-Org/RealmSPM/releases/download/Realm-20.0.6-Swift-6.4.2-Stable-20261027-0918/RealmSwift.xcframework.zip",
+            checksum: "6344b86f2fe9faaba5284fdf30420806a7ea4b48f5093429a6755a55804df9c2"
         )
     ]
 )
