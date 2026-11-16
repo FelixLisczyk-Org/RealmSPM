@@ -222,14 +222,20 @@ jobs:
     
     - name: Build Realm frameworks
       if: steps.swift-version.outputs.skip_build != 'true'
+      env:
+        XCODEBUILDMCP_QUEUE_TIMEOUT_SECONDS: "5700"
       run: |
         echo "🔨 Building Realm frameworks..."
         echo "Using Xcode: $(xcode-select -p)"
         echo "Swift version: $(swift --version | head -n1)"
         echo "Working directory: $(pwd)"
         
-        # Build with verbose output for debugging
-        sh build.sh build
+        # Build with verbose output for debugging, through xcodebuildmcp-queue where the runner
+        # has it and directly otherwise (PL-480). The job's 180 minutes already cover one queue
+        # wait (at most ~95 minutes) plus the build.
+        queue=()
+        if command -v xcodebuildmcp-queue >/dev/null 2>&1; then queue=(xcodebuildmcp-queue queue run --); fi
+        "${queue[@]}" sh build.sh build
         
         echo "✅ Build completed successfully"
         echo "Built frameworks:"
